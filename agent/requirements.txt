@@ -1,0 +1,10 @@
+langchain
+dotenv
+langchain-groq
+
+langchain_community
+streamlit
+
+langgraph
+# for structured_llm and embedding models
+langchain_google_genai
