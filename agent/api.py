@@ -1,10 +1,20 @@
 import requests
 import streamlit as st
 
+
+def get_headers():
+    user = st.session_state.user
+    return {
+        "X-User-ID": user["user_id"],
+        "X-Actor-Type": "USER",
+    }
+
+
 def get_products(merchant_id):
     response = requests.get(
         "http://localhost:8009/merchants/get_products",
         params={"merchant_id": merchant_id},
+        headers=get_headers(),
     )
     if response.status_code == 200:
         return response.json()["products"]
@@ -16,6 +26,7 @@ def delete_product(product_id):
     response = requests.delete(
         "http://localhost:8009/merchants/delete_product",
         params={"product_id": product_id},
+        headers=get_headers(),
     )
     if response.status_code == 200:
         return response.json()["msg"]
@@ -28,6 +39,7 @@ def edit_product(product_id, updates):
         "http://localhost:8009/merchants/edit_product",
         params={"product_id": product_id},
         json=updates,
+        headers=get_headers(),
     )
     if response.status_code == 200:
         return response.json()["msg"]
@@ -36,11 +48,16 @@ def edit_product(product_id, updates):
 
 
 def sales_by_merchant(merchant_id):
+    headers = {
+        "X-User-ID": merchant_id,
+        "X-Actor-Type": "USER",
+    }
     try:
         response = requests.get(
             "http://localhost:8009/merchants/sales_by_merchant",
             params={"merchant_id": merchant_id},
             timeout=10,
+            headers=get_headers(),
         )
         response.raise_for_status()
         data = response.json()
@@ -63,6 +80,7 @@ def get_orders_by_buyer(user_id):
             "http://localhost:8009/buyers/get_previous_orders",
             params={"user_id": user_id},
             timeout=10,
+            headers=get_headers(),
         )
 
         response.raise_for_status()
@@ -86,6 +104,7 @@ def get_product_details(product_ids):
             "http://localhost:8009/buyers/product_details",
             params={"product_ids": product_ids},
             timeout=10,
+            headers=get_headers(),
         )
 
         response.raise_for_status()
@@ -101,3 +120,33 @@ def get_product_details(product_ids):
     except ValueError:
         print("Products API returned invalid JSON.")
         return []
+
+
+import requests
+
+
+def get_activities(user_id):
+    # print("get_activities_api_called_by_Streamlit")
+    response = requests.get(
+        "http://localhost:8009/buyers/activities",
+        params={"user_id": user_id},
+        headers=get_headers(),
+    )
+
+    if response.status_code != 200:
+        return []
+
+    return response.json().get("activities", [])
+
+
+def get_merchant_activities(user_id):
+    response = requests.get(
+        "http://localhost:8009/merchants/activities",
+        params={"user_id": user_id},
+        headers=get_headers(),
+    )
+
+    if response.status_code != 200:
+        return []
+
+    return response.json().get("activities", [])

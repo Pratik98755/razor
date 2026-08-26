@@ -13,12 +13,7 @@ def register():
     if st.button("Register"):
         response = requests.post(
             "http://localhost:8009/accounts/register",
-            json={
-                "name": name,
-                "email": email,
-                "password": password,
-                "role": role
-            }
+            json={"name": name, "email": email, "password": password, "role": role},
         )
 
         if response.content:
@@ -26,7 +21,6 @@ def register():
                 st.write(response.json())
             except ValueError:
                 pass
-
 
 
 def login():
@@ -38,10 +32,7 @@ def login():
     if st.button("Login"):
         response = requests.post(
             "http://localhost:8009/accounts/login",
-            json={
-                "email": email,
-                "password": password
-            }
+            json={"email": email, "password": password},
         )
 
         if response.status_code == 200:
@@ -50,6 +41,3 @@ def login():
                 st.rerun()
             except ValueError:
                 pass
-
-
-

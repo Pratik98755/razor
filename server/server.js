@@ -14,6 +14,12 @@ const MONGO_DB_URL = 'mongodb://127.0.0.1:27017/razor_DB';
 
 
 
+const requestContext = require('./middlewares/requestContext')
+const activityLogger = require('./middlewares/activityLogger')
+
+
+
+
 const acc_router = require('./routes/accounts');
 const merchant_router = require('./routes/merchants')
 const buyer_router = require('./routes/buyers')
@@ -36,6 +42,11 @@ mongoose
 // middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }))
+
+
+// activity logs 
+app.use(requestContext);
+app.use(activityLogger);
 
 
 app.use('/accounts', acc_router)

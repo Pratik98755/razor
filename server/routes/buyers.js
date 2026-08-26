@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
 
+const activity = require('../middlewares/activity')
+
 const { ORDERS } = require('../models/orders.js');
 const {USERS} = require('../models/users.js');
 const { PRODUCTS } = require('../models/products.js');
+const {ACTIVITY} = require('../models/activity.js')
 
-router.get('/search_product', async (req, res) => {
+router.get('/search_product', activity('PRODUCT_SEARCHED', 'PRODUCT'), async (req, res) => {
     try {
         const {query, price, quantity, cursor} = req.query;
         if (!query) {
@@ -26,6 +29,8 @@ router.get('/search_product', async (req, res) => {
             })
         );
 
+        console.log('similar products : ', products)
+
         return res.status(200).json({
             products,
             next_cursor: result.next_cursor
@@ -41,7 +46,7 @@ router.get('/search_product', async (req, res) => {
 
 
 
-router.get('/get_previous_orders', async (req, res) => {
+router.get('/get_previous_orders',activity('ORDER_HISTORY_FETCHED', 'ORDER'), async (req, res) => {
 
     try {
         const { user_id } = req.query;
@@ -99,6 +104,30 @@ router.get('/product_details', async (req, res) => {
         });
     }
 });
+
+
+router.get('/activities', async(req, res) => {
+    console.log('/activities api called')
+    const {user_id} = req.query;
+    const user = await USERS.findOne({
+        user_id : user_id
+    })
+    if(!user){
+        return res.status(404).json({
+            'msg' : 'user not found !'
+        })
+    }
+    const activities = await ACTIVITY.find({
+        user_id : user_id
+    }).sort({
+        createdAt: -1
+    });
+    console.log('activities found !!!', activities)
+    return res.status(200).json({
+        'user_id' : user_id,
+        'activities' : activities
+    })
+})
 
 
 module.exports = router;

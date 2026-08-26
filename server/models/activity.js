@@ -1,10 +1,13 @@
 const mongoose = require("mongoose");
 
 const activitySchema = new mongoose.Schema(
-    {
+    {   
+        IP : {
+            type : String
+        },
         user_id: {
             type: String,
-            required: true
+            // required: true
         },
 
         role: {
@@ -41,4 +44,6 @@ const activitySchema = new mongoose.Schema(
     }
 );
 
-module.exports = mongoose.model("Activity", activitySchema);
+const ACTIVITY = mongoose.model("Activity", activitySchema);
+
+module.exports = {ACTIVITY}

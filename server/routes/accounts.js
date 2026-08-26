@@ -1,10 +1,12 @@
 const express = require('express')
 const router = express.Router();
 
+const activity = require('../middlewares/activity')
+
 const { USERS } = require('../models/users')
 const {nanoid} = require('nanoid')
 
-router.post('/register', async (req, res) => {
+router.post('/register', activity('USER_REGISTERED', 'USER'), async (req, res) => {
     const data = req.body;
     // console.log(data)
     const random_id = nanoid(8);
@@ -16,6 +18,10 @@ router.post('/register', async (req, res) => {
         role: data.role
     })
 
+    // for the activity logging
+    req.activity.userId = random_id
+    req.log_or_reg = true
+
     console.log(`user registered : ${entry}`)
 
     return res.status(201).json({
@@ -23,7 +29,7 @@ router.post('/register', async (req, res) => {
     })
 })
 
-router.post('/login', async (req, res) => {
+router.post('/login',activity('USER_LOGIN', 'USER'), async (req, res) => {
     const data = req.body;
     // console.log(data)
     const user = await USERS.findOne({
@@ -36,6 +42,11 @@ router.post('/login', async (req, res) => {
             'msg': "invalid credentials !"
         })
     } else {
+
+        // for the activity logging
+        req.activity.userId =  user.user_id;
+        req.log_or_reg = true
+        
         return res.status(200).json({
             'msg': 'login successful !',
             'user': user.name,

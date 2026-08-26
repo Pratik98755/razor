@@ -1,13 +1,13 @@
 import streamlit as st
 import requests
 
-
 # from ai.agent import ask_agent
 
 from ui.M_my_products import my_products_page
 from ui.M_ai_assisstant import ai_assisstant_page
 from ui.M_add_product import add_product_page
 from ui.M_dashboard import dashboard_page
+from ui.M_activity import activity_page
 
 
 def merchant_ui():
@@ -24,7 +24,7 @@ def merchant_ui():
         st.session_state.current_page = "Dashboard"
     page = st.sidebar.radio(
         "Menu",
-        ["Dashboard", "AI Assisstant", "Add Product", "My Products"],
+        ["Dashboard", "AI Assisstant", "Add Product", "My Products", "Activity"],
         key="current_page",
     )
 
@@ -39,3 +39,6 @@ def merchant_ui():
 
     elif page == "AI Assisstant":
         ai_assisstant_page(user)
+
+    elif page == "Activity":
+        activity_page(user)

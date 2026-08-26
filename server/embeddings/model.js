@@ -7,7 +7,7 @@ const embeddings = new GoogleGenerativeAIEmbeddings({
     model: "gemini-embedding-2"
 });
 
-const db = await lancedb.connect("/VECTOR_DBS/product_DB");
+const db = await lancedb.connect("../VECTOR_DBS/product_DB");
 
 
 // SUPPORTING FXNS

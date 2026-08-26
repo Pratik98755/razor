@@ -1,6 +1,8 @@
 const express = require('express')
 const router = express.Router();
 
+const activity = require('../middlewares/activity');
+
 const {ORDERS} = require('../models/orders')
 const {PRODUCTS} = require('../models/products')
 
@@ -8,7 +10,7 @@ const { nanoid } = require('nanoid');
 
 
 
-router.post('/create_order', async (req, res) => {
+router.post('/create_order',activity('ORDER_CREATED', 'ORDER'), async (req, res) => {
     try {
         const { buyer_id, product_id, quantity } = req.body;
         const product = await PRODUCTS.findOne({
@@ -20,6 +22,9 @@ router.post('/create_order', async (req, res) => {
                 msg: "Product not found"
             });
         }
+
+        // adding product_id for the middleware (activity logging)
+        req.activity.entityId = product.product_id;
 
         if (product.stock < quantity) {
             return res.status(400).json({

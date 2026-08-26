@@ -50,6 +50,10 @@ def add_product_page(user):
                     "category": category,
                     "images": images,
                 },
+                headers={
+                    "X-User-ID": user["user_id"],
+                    "X-Actor-Type": "USER",
+                },
             )
 
             if response.status_code == 201:
