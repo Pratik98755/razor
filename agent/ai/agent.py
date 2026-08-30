@@ -2,6 +2,7 @@ import streamlit as st
 import json
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from langchain_groq import ChatGroq
@@ -10,11 +11,7 @@ from langchain.agents import create_agent
 
 from ai.tools import merchant_toolkit, buyer_toolkit
 
-
-llm = ChatGroq(
-    model="openai/gpt-oss-20b",
-    streaming=True
-)
+llm = ChatGroq(model="openai/gpt-oss-20b", streaming=True)
 
 memory = InMemorySaver()
 
@@ -71,6 +68,9 @@ def get_agent():
 
             When recommending products, use actual catalog data returned by
             the tools.
+            
+            Never expose Key ID to the user. Payment process is automatic, you do not need to pass any data to user
+            for him to pay. Just tell him order_id and continue with payment.  
 
             Before any purchase or money-related action:
 
@@ -85,40 +85,29 @@ def get_agent():
             """
 
         st.session_state.agent = create_agent(
-            model=llm,
-            tools=tools,
-            system_prompt=system_prompt,
-            checkpointer=memory
+            model=llm, tools=tools, system_prompt=system_prompt, checkpointer=memory
         )
 
     return st.session_state.agent
 
 
-
-
 def ask_agent(question, thread_id):
-
     agent = get_agent()
+
     response = agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": question
-                }
-            ]
-        },
-        config={
-            "configurable": {
-                "thread_id": thread_id
-            }
-        }
+        {"messages": [{"role": "user", "content": question}]},
+        config={"configurable": {"thread_id": thread_id}},
     )
 
     answer = response["messages"][-1].content
+
     products = []
+    payment = None
+    cart_checkout_details = None
 
     for message in response["messages"]:
+
+        # SEARCH PRODUCTS
         if (
             getattr(message, "type", None) == "tool"
             and getattr(message, "name", None) == "search_products"
@@ -130,4 +119,54 @@ def ask_agent(question, thread_id):
 
             products = result.get("products", [])
 
-    return answer, products
+        # BUY PRODUCT
+        if (
+            getattr(message, "type", None) == "tool"
+            and getattr(message, "name", None) == "buy_product"
+        ):
+            result = message.content
+
+            if isinstance(result, str):
+                result = json.loads(result)
+
+            if result.get("status_code") == 201:
+
+                payment_data = result.get("data", {})
+
+                payment = {
+                    "payment_required": True,
+                    "order_id": payment_data.get("order_id"),
+                    "razorpay_order_id": payment_data.get("razorpay_order_id"),
+                    "amount": payment_data.get("amount"),
+                    "currency": payment_data.get("currency"),
+                    "key_id": payment_data.get("key_id"),
+                }
+
+                print("PAYMENT FROM AGENT:", payment)
+
+        # CART CHECKOUT
+        if (
+            getattr(message, "type", None) == "tool"
+            and getattr(message, "name", None) == "cart_checkout"
+        ):
+            result = message.content
+
+            if isinstance(result, str):
+                result = json.loads(result)
+
+            if result.get("status_code") == 201:
+
+                checkout_data = result.get("data", {})
+
+                cart_checkout_details = {
+                    "payment_required": True,
+                    "checkout_id": checkout_data.get("checkout_id"),
+                    "razorpay_order_id": checkout_data.get("razorpay_order_id"),
+                    "amount": checkout_data.get("amount"),
+                    "currency": checkout_data.get("currency"),
+                    "key_id": checkout_data.get("key_id"),
+                }
+
+                print("CART CHECKOUT FROM AGENT:", cart_checkout_details)
+
+    return (answer, products, payment, cart_checkout_details)

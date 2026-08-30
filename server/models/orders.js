@@ -39,14 +39,48 @@ const order_schema = mongoose.Schema({
         required: true
     },
 
+    // -----------------------------
+    // Razorpay fields
+    // -----------------------------
+
+    razorpay_order_id: {
+        type: String,
+        // unique: true,
+        sparse: true
+    },
+
+    razorpay_payment_id: {
+        type: String,
+        sparse: true
+    },
+
+    razorpay_signature: {
+        type: String,
+        sparse: true
+    },
+
+    razorpay_status: {
+        type: String,
+        enum: [
+            "created",
+            "attempted",
+            "paid"
+        ]
+    },
+
+    // -----------------------------
+    // Our internal order status
+    // -----------------------------
+
     status: {
         type: String,
         enum: [
+            "PENDING_PAYMENT",
             "CONFIRMED",
             "CANCELLED",
             "COMPLETED"
         ],
-        default: "CONFIRMED"
+        default: "PENDING_PAYMENT"
     }
 
 }, {

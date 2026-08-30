@@ -5,6 +5,7 @@ import streamlit as st
 from ui.B_orders import orders_page
 from ui.B_ai_scout import ai_scout_page
 from ui.B_activity import activity_page
+from ui.B_cart import cart_page
 
 st.set_page_config(initial_sidebar_state=600)
 
@@ -45,7 +46,7 @@ def buyer_ui():
 
     page = st.radio(
         "Navigation",
-        ["🛍️ Scout AI", "📦 Orders", "🔍 Activity"],
+        ["🛍️ Scout AI", "🛒 Cart", "📦 Orders", "🔍 Activity"],
         horizontal=True,
         label_visibility="collapsed",
         key="nav_radio",
@@ -61,3 +62,6 @@ def buyer_ui():
 
     elif page == "🔍 Activity":
         activity_page(user)
+    
+    elif page == "🛒 Cart":
+        cart_page(user)

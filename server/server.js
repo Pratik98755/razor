@@ -2,7 +2,7 @@ const express = require('express')
 const app = express();
 
 const mongoose = require('mongoose')
-
+const cors = require("cors");
 
 
 ///////////////////////////////////////////////////////////////////
@@ -24,6 +24,8 @@ const acc_router = require('./routes/accounts');
 const merchant_router = require('./routes/merchants')
 const buyer_router = require('./routes/buyers')
 const order_router = require('./routes/orders')
+const cart_router = require('./routes/carts')
+
 
 // connection to DATABASE
 mongoose
@@ -40,6 +42,7 @@ mongoose
 
 
 // middlewares
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }))
 
@@ -53,6 +56,7 @@ app.use('/accounts', acc_router)
 app.use('/merchants', merchant_router)
 app.use('/buyers', buyer_router)
 app.use('/orders', order_router)
+app.use('/carts', cart_router)
 
 
 app.listen(port, () => {

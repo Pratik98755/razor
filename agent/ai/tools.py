@@ -168,19 +168,28 @@ def buyer_toolkit(user_id):
     @tool
     def buy_product(product_id, quantity):
         """
-        Purchase a product.
+        Initiate the purchase of a product.
 
         IMPORTANT:
         Only call this tool after the buyer has explicitly confirmed
         the purchase, including the quantity.
+
+        This tool creates the marketplace order and initiates the
+        Razorpay payment process.
+
+        IMPORTANT:
+        A successful response means the order was created and payment
+        is required. It does NOT mean that the payment was completed.
         """
+
         response = requests.post(
             "http://localhost:8009/orders/create_order",
             json={"buyer_id": user_id, "product_id": product_id, "quantity": quantity},
             headers=headers,
         )
-
-        return {"status_code": response.status_code, "data": response.json()}
+        data = response.json()
+        print("BUY PRODUCT TOOL RESPONSE:", data)
+        return {"status_code": response.status_code, "data": data}
 
     @tool
     def previous_orders():
@@ -201,4 +210,168 @@ def buyer_toolkit(user_id):
             "previous_orders": data.get("previous_orders", []),
         }
 
-    return [search_products, buy_product, previous_orders]
+    @tool
+    def get_product_details(product_ids):
+        """takes in array of product_ids and returns details about the products. use this tool to find
+        information about any product given you have the product id"""
+        try:
+            response = requests.get(
+                "http://localhost:8009/buyers/product_details",
+                params={"product_ids": product_ids},
+                timeout=10,
+                headers=headers,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("product_details", [])
+
+        except requests.exceptions.RequestException as e:
+            print(f"Products API error: {e}")
+            return []
+
+        except ValueError:
+            print("Products API returned invalid JSON.")
+            return []
+
+    ########################## CARTS ############################
+    @tool
+    def add_to_cart(product_id, quantity):
+        """
+        Add a product to the buyer's permanent shopping cart.
+
+        Use this when the buyer explicitly asks to add a product
+        to their cart.
+
+        IMPORTANT:
+        - Do NOT use this when the buyer only asks to view a product.
+        - Do NOT use this for Buy Now purchases.
+        - quantity must be explicitly known.
+        - This does NOT make a payment.
+        """
+
+        response = requests.post(
+            "http://localhost:8009/carts/add",
+            json={"buyer_id": user_id, "product_id": product_id, "quantity": quantity},
+            headers=headers,
+        )
+        data = response.json()
+        print("ADD TO CART TOOL RESPONSE:", data)
+        return {"status_code": response.status_code, "data": data}
+
+    @tool
+    def get_cart():
+        """
+        Retrieve the buyer's current shopping cart.
+
+        Use this when the buyer asks:
+        - what's in my cart
+        - show my cart
+        - what have I added
+        - how much is my cart
+        - review my cart
+
+        This tool does NOT modify the cart.
+        """
+        response = requests.get(
+            "http://localhost:8009/carts/cart",
+            params={"buyer_id": user_id},
+            headers=headers,
+        )
+
+        data = response.json()
+        print("GET CART TOOL RESPONSE:", data)
+        return {"status_code": response.status_code, "cart": data.get("cart", {})}
+
+    @tool
+    def update_cart(product_id, quantity):
+        """
+        Change the quantity of a product already in the buyer's cart.
+
+        Use this when the buyer explicitly asks to change
+        the quantity of a cart item.
+
+        Example:
+        "Change the keyboard quantity to 3."
+
+        quantity must be at least 1.
+        This does NOT make a payment.
+        """
+        response = requests.patch(
+            "http://localhost:8009/carts/update",
+            json={"buyer_id": user_id, "product_id": product_id, "quantity": quantity},
+            headers=headers,
+        )
+
+        data = response.json()
+        print("UPDATE CART TOOL RESPONSE:", data)
+        return {"status_code": response.status_code, "data": data}
+
+    @tool
+    def remove_from_cart(product_id):
+        """
+        Remove a specific product from the buyer's cart.
+
+        Use only when the buyer explicitly asks to remove
+        a product from their cart.
+
+        This does NOT make a payment.
+        """
+        response = requests.delete(
+            "http://localhost:8009/carts/remove",
+            json={"buyer_id": user_id, "product_id": product_id},
+            headers=headers,
+        )
+
+        data = response.json()
+        print("REMOVE FROM CART TOOL RESPONSE:", data)
+        return {"status_code": response.status_code, "data": data}
+
+    @tool
+    def clear_cart():
+        """
+        Remove ALL products from the buyer's cart.
+
+        IMPORTANT:
+        Only use this when the buyer explicitly asks
+        to empty or clear their entire cart.
+
+        Do not use this when the buyer asks to remove
+        only one product.
+        """
+        response = requests.delete(
+            "http://localhost:8009/carts/clear",
+            json={"buyer_id": user_id},
+            headers=headers,
+        )
+        data = response.json()
+        print("CLEAR CART TOOL RESPONSE:", data)
+        return {"status_code": response.status_code, "data": data}
+
+    @tool
+    def cart_checkout(user_id):
+        """
+        this tool is used for cart checkout, this only begins the payment process for the products available in the cart of the buyer.
+        once you call this tool, payment process is automatic, once tool called just say the user to continue with payment, that's all.
+        once called, you do not control the cart checkout.
+        """
+        response = requests.post(
+            "http://localhost:8009/carts/checkout",
+            json={"buyer_id": user_id},
+            headers=headers,
+        )
+        data = response.json()
+        print("CART CHECKOUT TOOL RESPONSE:", data)
+        return {"status_code": response.status_code, "data": data}
+
+    return [
+        search_products,
+        buy_product,
+        previous_orders,
+        get_product_details,
+        add_to_cart,
+        get_cart,
+        update_cart,
+        remove_from_cart,
+        clear_cart,
+        cart_checkout,
+    ]

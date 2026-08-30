@@ -3,6 +3,11 @@ from ai.agent import ask_agent
 
 st.set_page_config(initial_sidebar_state=600)
 
+from ui.payments.payment import payment_dialog
+from ui.payments.cart_checkout_payment import cart_checkout_payment_dialog
+
+from api import check_order_status,add_to_cart
+
 
 def ai_scout_page(user):
 
@@ -15,6 +20,38 @@ def ai_scout_page(user):
 
     if "buy_now_prompt" not in st.session_state:
         st.session_state.buy_now_prompt = None
+
+    # razorpay payment
+    if "pending_payment" not in st.session_state:
+        st.session_state.pending_payment = None
+    # razorpay payment for cart checkout
+    if "pending_cart_checkout" not in st.session_state:
+        st.session_state.pending_cart_checkout = None
+
+    if st.session_state.pending_payment:
+        order_id = st.session_state.pending_payment["razorpay_order_id"]
+        print("pending payment : ", order_id)
+        status = check_order_status(order_id)
+        if status == True:
+            st.session_state.pending_payment = None
+            st.rerun()
+    # payment dialog
+    if st.session_state.pending_payment:
+        payment_dialog(st.session_state.pending_payment, user["user_id"])
+
+    if st.session_state.pending_cart_checkout:
+        order_id = st.session_state.pending_cart_checkout["razorpay_order_id"]
+        print("pending cart checkout : ", order_id)
+        status = check_order_status(order_id)
+        if status == True:
+            print('pending cart PAID')
+            st.session_state.pending_cart_checkout = None
+            st.rerun()
+    # payment dialog for cart
+    if st.session_state.pending_cart_checkout:
+        cart_checkout_payment_dialog(
+            st.session_state.pending_cart_checkout, user["user_id"]
+        )
 
     has_results = bool(st.session_state.product_search_results)
 
@@ -62,6 +99,96 @@ def ai_scout_page(user):
                         )
 
                     st.space("stretch")
+                    
+                    
+                    
+                    
+                    # ---------------- CART CONTROLS ----------------
+
+                    product_id = product["product_id"]
+                    available_stock = product.get("stock", 0)
+
+                    quantity_key = f"cart_qty_{product_id}"
+
+                    if quantity_key not in st.session_state:
+                        st.session_state[quantity_key] = 1
+
+
+                    # ---------------- QUANTITY + ADD TO CART ----------------
+
+                    if available_stock > 0:
+
+                        # One row:  -  quantity  +  |  Add to Cart
+                        qty_col1, qty_col2, qty_col3, cart_col = st.columns(
+                            [0.7, 0.8, 0.7, 2.5]
+                        )
+
+                        with qty_col1:
+                            if st.button(
+                                "−",
+                                key=f"minus_{product_id}",
+                                use_container_width=True,
+                            ):
+                                if st.session_state[quantity_key] > 1:
+                                    st.session_state[quantity_key] -= 1
+                                st.rerun()
+
+                        with qty_col2:
+                            st.markdown(
+                                f"""
+                                <div style="
+                                    text-align: center;
+                                    padding-top: 6px;
+                                    font-weight: bold;
+                                ">
+                                    {st.session_state[quantity_key]}
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+
+                        with qty_col3:
+                            if st.button(
+                                "+",
+                                key=f"plus_{product_id}",
+                                use_container_width=True,
+                            ):
+                                if st.session_state[quantity_key] < available_stock:
+                                    st.session_state[quantity_key] += 1
+                                else:
+                                    st.toast("Maximum available stock reached.")
+
+                                st.rerun()
+
+                        with cart_col:
+                            if st.button(
+                                "🛒 Add to Cart",
+                                key=f"add_cart_{product_id}",
+                                type="secondary",
+                                use_container_width=True,
+                            ):
+                                quantity = st.session_state[quantity_key]
+
+                                result = add_to_cart(
+                                    buyer_id=user["user_id"],
+                                    product_id=product_id,
+                                    quantity=quantity,
+                                )
+
+                                if result:
+                                    st.toast(
+                                        f"Added {quantity} × "
+                                        f"{product.get('name', 'product')} to cart!"
+                                    )
+
+                                    st.session_state[quantity_key] = 1
+
+                    else:
+                        st.error("Out of stock")
+
+
+
+
 
                     # ---------------- BUY NOW ----------------
 
@@ -87,6 +214,8 @@ def ai_scout_page(user):
     st.header("🛍️ SCOUT")
 
     st.subheader("The AI Buyer for you!")
+
+    print("PENDING PAYMENT:", st.session_state.get("pending_payment"))
 
     # ---------------- CHAT HISTORY ----------------
 
@@ -114,7 +243,11 @@ def ai_scout_page(user):
             st.write(question)
 
         # Agent
-        answer, products = ask_agent(question, user["user_id"])
+        # answer, products, payment = ask_agent(question, user["user_id"])
+        with st.spinner("🤖 Scout is working with your order..."):
+            answer, products, payment, cart_checkout_details = ask_agent(
+                question, user["user_id"]
+            )
 
         # Save assistant response
         st.session_state.buyer_chat_history.append(
@@ -128,7 +261,17 @@ def ai_scout_page(user):
         if products:
             st.session_state.product_search_results = products
 
-        st.rerun()
+        # razorpay payment details
+        if payment:
+            print("payment_details:", payment)
+            st.session_state.pending_payment = payment
+
+        if cart_checkout_details:
+            print("checkout_details : ", cart_checkout_details)
+            st.session_state.pending_cart_checkout = cart_checkout_details
+
+        if products or payment or cart_checkout_details:
+            st.rerun()
 
     # ---------------- NORMAL CHAT INPUT ----------------
 
@@ -145,7 +288,11 @@ def ai_scout_page(user):
         )
 
         # Agent
-        answer, products = ask_agent(question, user["user_id"])
+        # answer, products, payment = ask_agent(question, user["user_id"])
+        with st.spinner("🤖 Scout is finding the best option for you..."):
+            answer, products, payment, cart_checkout_details = ask_agent(
+                question, user["user_id"]
+            )
 
         # Save assistant response
         st.session_state.buyer_chat_history.append(
@@ -156,10 +303,17 @@ def ai_scout_page(user):
         if products:
             st.session_state.product_search_results = products
 
-        # Display response
         with st.chat_message("assistant"):
             st.write(answer)
 
-        # Rerun so sidebar updates
-        if products:
+        # razorpay payment details
+        if payment:
+            print("payment_details:", payment)
+            st.session_state.pending_payment = payment
+
+        if cart_checkout_details:
+            print("checkout_details : ", cart_checkout_details)
+            st.session_state.pending_cart_checkout = cart_checkout_details
+
+        if products or payment or cart_checkout_details:
             st.rerun()

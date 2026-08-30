@@ -3,6 +3,7 @@ import "dotenv/config";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import * as lancedb from "@lancedb/lancedb";
 
+
 const embeddings = new GoogleGenerativeAIEmbeddings({
     model: "gemini-embedding-2"
 });
@@ -92,39 +93,207 @@ async function edit_product_embedding(product) {
 
 
 
+
 // similarity search for products
 async function similarity_search_products(query, price, quantity, cursor) {
+    const { PRODUCTS } = await import('../models/products.js');
 
-    const table = await db.openTable("products");
-    const query_vector = await embeddings.embedQuery(query);
-    const offset = cursor ? parseInt(cursor) : 0;
+    try {
+        const table = await db.openTable("products");
 
-    let search = table
-        .search(query_vector)
-        .limit(10)
-        .offset(offset);
+        const query_vector = await embeddings.embedQuery(query);
 
-    // Hard constraints
-    const filters = [];
+        const offset = cursor ? parseInt(cursor) : 0;
 
-    if (price !== undefined) {
-        filters.push(`price <= ${Number(price)}`);
+        // LanceDB semantic search only
+        const results = await table
+            .search(query_vector)
+            .limit(10)
+            .offset(offset)
+            .toArray();
+
+        if (results.length === 0) {
+            return {
+                products: [],
+                next_cursor: null
+            };
+        }
+
+        const productIds = results.map(
+            product => product.product_id
+        );
+
+        console.log("PRODUCT IDS:", productIds);
+
+        // MongoDB = source of truth
+        const mongoProducts = await PRODUCTS.find({
+            product_id: { $in: productIds }
+        }).lean();
+
+        console.log("MONGO PRODUCTS:", mongoProducts);
+
+        const productMap = new Map(
+            mongoProducts.map(product => [
+                product.product_id,
+                product
+            ])
+        );
+
+        let products = results
+            .map(match => {
+                const product = productMap.get(match.product_id);
+
+                if (!product) {
+                    return null;
+                }
+
+                return {
+                    ...product,
+                    _distance: match._distance
+                };
+            })
+            .filter(Boolean);
+
+        if (price !== undefined) {
+            products = products.filter(
+                product => product.price <= Number(price)
+            );
+        }
+
+        if (quantity !== undefined) {
+            products = products.filter(
+                product => product.stock >= Number(quantity)
+            );
+        }
+
+        const next_cursor =
+            results.length === 10
+                ? String(offset + 10)
+                : null;
+
+        return {
+            products,
+            next_cursor
+        };
+
+    } catch (err) {
+        console.error(
+            "SIMILARITY SEARCH ERROR:",
+            err
+        );
+
+        throw err;
     }
-    if (quantity !== undefined) {
-        filters.push(`stock >= ${Number(quantity)}`);
-    }
-    if (filters.length > 0) {
-        search = search.where(filters.join(" AND "));
-    }
-
-    const results = await search.toArray();
-    const next_cursor = results.length === 10? String(offset + 10) : null;
-
-    return {
-        products: results,
-        next_cursor
-    };
 }
+
+
+// async function similarity_search_products(query, price, quantity, cursor) {
+//     const {PRODUCTS} = await import('../models/products.js')
+//     try {
+
+//         const table = await db.openTable("products");
+
+//         const query_vector = await embeddings.embedQuery(query);
+
+//         const offset = cursor ? parseInt(cursor) : 0;
+
+//         // LanceDB semantic search only
+//         const results = await table
+//             .search(query_vector)
+//             .limit(10)
+//             .offset(offset)
+//             .toArray();
+
+//         // console.log("LANCE RESULTS:", results);
+
+//         if (results.length === 0) {
+//             return {
+//                 products: [],
+//                 next_cursor: null
+//             };
+//         }
+
+//         const productIds = results.map(
+//             product => product.product_id
+//         );
+
+//         console.log("PRODUCT IDS:", productIds);
+
+//         // MongoDB = source of truth
+//         const mongoProducts = await PRODUCTS.find({
+//             product_id: { $in: productIds }
+//         }).lean();
+
+//         console.log("MONGO PRODUCTS:", mongoProducts);
+
+//         const productMap = new Map(
+//             mongoProducts.map(product => [
+//                 product.product_id,
+//                 product
+//             ])
+//         );
+
+
+//         let products = results
+//             .map(match => {
+
+//                 const product = productMap.get(match.product_id);
+
+//                 if (!product) {
+//                     return null;
+//                 }
+
+//                 const match_percentage = Math.max(
+//                     0,
+//                     Math.min(
+//                         100,
+//                         (1 - match._distance) * 100
+//                     )
+//                 );
+
+//                 return {
+//                     ...product,
+//                     match_percentage: `${Math.round(match_percentage)}%`
+//                 };
+//             })
+//             .filter(Boolean);
+
+//         if (price !== undefined) {
+//             products = products.filter(
+//                 product => product.price <= Number(price)
+//             );
+//         }
+
+//         if (quantity !== undefined) {
+//             products = products.filter(
+//                 product => product.stock >= Number(quantity)
+//             );
+//         }
+
+//         const next_cursor =
+//             results.length === 10
+//                 ? String(offset + 10)
+//                 : null;
+
+//         return {
+//             products,
+//             next_cursor
+//         };
+
+//     } catch (err) {
+
+//         console.error(
+//             "SIMILARITY SEARCH ERROR:",
+//             err
+//         );
+
+//         throw err;
+//     }
+// }
+
+
+
+
 
 
 export {

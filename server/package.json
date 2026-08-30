@@ -22,10 +22,12 @@
     "@lancedb/lancedb-win32-x64-msvc": "^0.37.1",
     "@langchain/core": "^1.2.9",
     "@langchain/google-genai": "^2.3.0",
-    "apache-arrow": "^21.2.0",
+    "apache-arrow": "18.1.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongoose": "^9.9.3",
-    "nanoid": "^6.0.1"
+    "nanoid": "^6.0.1",
+    "razorpay": "^2.9.8"
   }
 }

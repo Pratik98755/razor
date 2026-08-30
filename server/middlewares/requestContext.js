@@ -1,7 +1,7 @@
 
 const requestContext = (req, res, next) => {
 
-    // adds ids to unquely identify each activity 
+    // adds ids to uniquely identify each activity 
     req.userId = req.headers["x-user-id"];  
     req.actorType = req.headers["x-actor-type"] || "USER";
 
