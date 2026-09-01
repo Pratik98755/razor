@@ -168,7 +168,7 @@ router.get("/cart", async (req, res) => {
         }
 
         /// for activity logging
-        req.activity.entityId = cart.cart_id
+        // req.activity.entityId = `C-${buyer_id}`
 
         return res.status(200).json({
             cart: {
@@ -350,6 +350,46 @@ router.delete("/clear",activity('CART_CLEARED', 'CART'), async (req, res) => {
 
         return res.status(500).json({
             msg: "Internal server error"
+        });
+    }
+});
+
+
+// ###########################################################################
+// ############################ CART PAYMENTS ################################
+router.get("/check_checkout_status", async (req, res) => {
+    try {
+        console.log("/check checkout status called");
+
+        const { razorpay_order_id } = req.query;
+
+        if (!razorpay_order_id) {
+            return res.status(400).json({
+                msg: "razorpay_order_id is required"
+            });
+        }
+
+        const checkout = await CHECKOUTS.findOne({
+            razorpay_order_id
+        });
+
+        console.log("checkout found:", checkout);
+
+        if (!checkout) {
+            return res.status(404).json({
+                msg: "checkout not found"
+            });
+        }
+
+        return res.status(200).json({
+            status: checkout.status
+        });
+
+    } catch (err) {
+        console.error("CHECK CHECKOUT STATUS ERROR:", err);
+
+        return res.status(500).json({
+            err: "failed to check checkout status"
         });
     }
 });
@@ -813,5 +853,113 @@ router.post("/verify_payment",activity('CART_PAYMENT_CONFIRMED', 'CART'), async 
         });
     }
 });
+
+router.post("/cancel_checkout", activity("CHECKOUT_CANCELLED", "RAZORPAY_ORDER_ID"), async (req, res) => {
+        try {
+            console.log("/cancel_checkout called");
+            const { razorpay_order_id } = req.body;
+            if (!razorpay_order_id) {
+                return res.status(400).json({
+                    msg: "razorpay_order_id is required"
+                });
+            }
+
+            const checkout = await CHECKOUTS.findOneAndUpdate(
+                {
+                    razorpay_order_id,
+                    status: "PENDING_PAYMENT"
+                },
+                {
+                    $set: {
+                        status: "CANCELLED"
+                    }
+                },
+                {
+                    new: true
+                }
+            );
+
+            if (!checkout) {
+                return res.status(400).json({
+                    msg: "Checkout not found or already completed"
+                });
+            }
+
+            /// for activity logging
+            req.activity.entityId = razorpay_order_id
+
+            console.log("CHECKOUT CANCELLED:",razorpay_order_id);
+            return res.status(200).json({
+                status: "done",
+                checkout_id: checkout.checkout_id
+            });
+
+        } catch (error) {
+            console.error(
+                "CANCEL CHECKOUT ERROR:",
+                error
+            );
+            return res.status(500).json({
+                status: "err"
+            });
+        }
+    }
+);
+
+
+router.post("/checkout_payment_failure", activity("CHECKOUT_PAYMENT_FAILURE", "RAZORPAY_ORDER_ID"), async (req, res) => {
+        try {
+            console.log("/checkout_payment_failure called");
+            const { razorpay_order_id } = req.body;
+            if (!razorpay_order_id) {
+                return res.status(400).json({
+                    msg: "razorpay_order_id is required"
+                });
+            }
+
+            const checkout = await CHECKOUTS.findOneAndUpdate(
+                {
+                    razorpay_order_id,
+                    status: "PENDING_PAYMENT"
+                },
+                {
+                    $set: {
+                        status: "FAILED"
+                    }
+                },
+                {
+                    new: true
+                }
+            );
+
+            if (!checkout) {
+                return res.status(400).json({
+                    msg: "Checkout not found or already completed"
+                });
+            }
+
+            /// for activity logging
+            req.activity.entityId = razorpay_order_id
+
+            console.log("CHECKOUT PAYMENT FAILURE:",razorpay_order_id);
+            return res.status(200).json({
+                status: "done",
+                checkout_id: checkout.checkout_id
+            });
+
+        } catch (error) {
+            console.error(
+                "/checkout_payment_failure API error:",
+                error
+            );
+            return res.status(500).json({
+                status: "err"
+            });
+        }
+    }
+);
+
+
+
 
 module.exports = router;

@@ -19,12 +19,13 @@ const activityLogger = require('./middlewares/activityLogger')
 
 
 
-
 const acc_router = require('./routes/accounts');
 const merchant_router = require('./routes/merchants')
 const buyer_router = require('./routes/buyers')
 const order_router = require('./routes/orders')
 const cart_router = require('./routes/carts')
+const stats_router = require('./routes/stats')
+
 
 
 // connection to DATABASE
@@ -57,6 +58,7 @@ app.use('/merchants', merchant_router)
 app.use('/buyers', buyer_router)
 app.use('/orders', order_router)
 app.use('/carts', cart_router)
+app.use('/stats', stats_router)
 
 
 app.listen(port, () => {

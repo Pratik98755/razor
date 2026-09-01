@@ -11,25 +11,49 @@ const embeddings = new GoogleGenerativeAIEmbeddings({
 const db = await lancedb.connect("../VECTOR_DBS/product_DB");
 
 
-// SUPPORTING FXNS
+// --------------------------------------------------
+// SUPPORTING FUNCTION
+// Build the text that represents a product
+// --------------------------------------------------
 
-// adding product embeddings for new products
+function build_product_embedding_text(product) {
+
+    const metadata = product.metadata || {};
+
+    const attributes = metadata.attributes || {};
+
+    return `
+        Product Name: ${product.name || ""}
+        Description: ${product.description || ""}
+        Category: ${product.category || ""}
+        Product Type: ${metadata.product_type || ""}
+        Product Role: ${metadata.product_role || ""}
+        Use Contexts: ${(metadata.use_contexts || []).join(", ")}
+
+        Attributes:
+        ${Object.entries(attributes)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(", ")}
+    `.trim();
+}
+
+
+// --------------------------------------------------
+// ADD PRODUCT EMBEDDING
+// --------------------------------------------------
+
 async function add_product_embedding(product) {
 
-    const vector = await embeddings.embedQuery(`
-        ${product.name}.
-        ${product.description}.
-        Category: ${product.category}
-    `);
+    const embedding_text = build_product_embedding_text(product);
+
+    const vector = await embeddings.embedQuery(
+        embedding_text
+    );
 
     const data = {
         product_id: product.product_id,
         name: product.name,
         merchant_id: product.merchant_id,
-        description: product.description,
-        images: product.images || [],
-        price: product.price,
-        stock: product.stock,
         category: product.category,
         vector
     };
@@ -38,110 +62,153 @@ async function add_product_embedding(product) {
 
     if (!tables.includes("products")) {
 
-        // First product → LanceDB creates the schema automatically
+        // First product → LanceDB creates schema automatically
         await db.createTable("products", [data]);
 
     } else {
 
         const table = await db.openTable("products");
-        await table.add([data]);
 
+        await table.add([data]);
     }
 
     console.log("product embedding added to db");
 }
 
 
+// --------------------------------------------------
+// DELETE PRODUCT EMBEDDING
+// --------------------------------------------------
 
-
-
-
-// delete product embedding
 async function delete_product_embedding(product_id) {
+
     const products_table = await db.openTable("products");
+
     await products_table.delete(
         `product_id = '${product_id}'`
     );
+
+    console.log("product embedding deleted from db");
 }
 
 
-// edit product embedding
+// --------------------------------------------------
+// EDIT PRODUCT EMBEDDING
+// --------------------------------------------------
+
 async function edit_product_embedding(product) {
 
     const products_table = await db.openTable("products");
-    const vector = await embeddings.embedQuery(`
-        ${product.name}.
-        ${product.description}.
-        Category: ${product.category}
-    `);
+
+    const embedding_text = build_product_embedding_text(product);
+
+    const vector = await embeddings.embedQuery(
+        embedding_text
+    );
 
     await products_table.update({
+
         where: `product_id = '${product.product_id}'`,
 
         values: {
             name: product.name,
             merchant_id: product.merchant_id,
-            description: product.description,
-            images: product.images || [],
-            price: product.price,
-            stock: product.stock,
             category: product.category,
             vector
         }
     });
+
+    console.log("product embedding updated in db");
 }
 
 
+// --------------------------------------------------
+// SIMILARITY SEARCH FOR PRODUCTS
+// --------------------------------------------------
 
+async function similarity_search_products(
+    query,
+    price,
+    quantity,
+    cursor
+) {
 
-// similarity search for products
-async function similarity_search_products(query, price, quantity, cursor) {
-    const { PRODUCTS } = await import('../models/products.js');
+    const { PRODUCTS } = await import("../models/products.js");
 
     try {
+
         const table = await db.openTable("products");
 
         const query_vector = await embeddings.embedQuery(query);
 
-        const offset = cursor ? parseInt(cursor) : 0;
+        const offset = cursor
+            ? parseInt(cursor)
+            : 0;
 
-        // LanceDB semantic search only
+
+        // LanceDB semantic search
         const results = await table
             .search(query_vector)
             .limit(10)
             .offset(offset)
             .toArray();
 
+
         if (results.length === 0) {
+
             return {
                 products: [],
                 next_cursor: null
             };
         }
 
+
+        // Extract product IDs
         const productIds = results.map(
             product => product.product_id
         );
 
-        console.log("PRODUCT IDS:", productIds);
+        console.log(
+            "PRODUCT IDS:",
+            productIds
+        );
+
 
         // MongoDB = source of truth
         const mongoProducts = await PRODUCTS.find({
-            product_id: { $in: productIds }
+
+            product_id: {
+                $in: productIds
+            }
+
         }).lean();
 
-        console.log("MONGO PRODUCTS:", mongoProducts);
 
+        console.log(
+            "MONGO PRODUCTS:",
+            mongoProducts
+        );
+
+
+        // Map MongoDB products by product_id
         const productMap = new Map(
+
             mongoProducts.map(product => [
                 product.product_id,
                 product
             ])
+
         );
 
+
+        // Preserve LanceDB similarity ordering
         let products = results
+
             .map(match => {
-                const product = productMap.get(match.product_id);
+
+                const product = productMap.get(
+                    match.product_id
+                );
 
                 if (!product) {
                     return null;
@@ -151,32 +218,53 @@ async function similarity_search_products(query, price, quantity, cursor) {
                     ...product,
                     _distance: match._distance
                 };
+
             })
+
             .filter(Boolean);
 
+
+        // Price filter
         if (price !== undefined) {
+
             products = products.filter(
-                product => product.price <= Number(price)
+
+                product =>
+                    product.price <= Number(price)
+
             );
         }
 
+
+        // Quantity / stock filter
         if (quantity !== undefined) {
+
             products = products.filter(
-                product => product.stock >= Number(quantity)
+
+                product =>
+                    product.stock >= Number(quantity)
+
             );
         }
+
 
         const next_cursor =
             results.length === 10
                 ? String(offset + 10)
                 : null;
 
+
         return {
+
             products,
+
             next_cursor
+
         };
 
+
     } catch (err) {
+
         console.error(
             "SIMILARITY SEARCH ERROR:",
             err
@@ -187,112 +275,43 @@ async function similarity_search_products(query, price, quantity, cursor) {
 }
 
 
-// async function similarity_search_products(query, price, quantity, cursor) {
-//     const {PRODUCTS} = await import('../models/products.js')
-//     try {
 
-//         const table = await db.openTable("products");
+async function get_similar_products_using_prestored_vector(product_id) {
 
-//         const query_vector = await embeddings.embedQuery(query);
+    try {
+        const table = await db.openTable("products");
 
-//         const offset = cursor ? parseInt(cursor) : 0;
+        // Get the actual stored vector of the anchor
+        const anchor = await table
+            .query()
+            .where(`product_id = '${product_id}'`)
+            .limit(1)
+            .toArray();
 
-//         // LanceDB semantic search only
-//         const results = await table
-//             .search(query_vector)
-//             .limit(10)
-//             .offset(offset)
-//             .toArray();
+        if (anchor.length === 0) {
+            return [];
+        }
 
-//         // console.log("LANCE RESULTS:", results);
+        const anchor_vector = anchor[0].vector;
 
-//         if (results.length === 0) {
-//             return {
-//                 products: [],
-//                 next_cursor: null
-//             };
-//         }
+        // Search LanceDB using the anchor's actual vector
+        const results = await table
+            .search(anchor_vector)
+            .limit(20)
+            .toArray();
 
-//         const productIds = results.map(
-//             product => product.product_id
-//         );
+        return results;
 
-//         console.log("PRODUCT IDS:", productIds);
+    } catch (error) {
 
-//         // MongoDB = source of truth
-//         const mongoProducts = await PRODUCTS.find({
-//             product_id: { $in: productIds }
-//         }).lean();
+        console.error(
+            "GET SIMILAR PRODUCTS ERROR:",
+            error
+        );
 
-//         console.log("MONGO PRODUCTS:", mongoProducts);
-
-//         const productMap = new Map(
-//             mongoProducts.map(product => [
-//                 product.product_id,
-//                 product
-//             ])
-//         );
-
-
-//         let products = results
-//             .map(match => {
-
-//                 const product = productMap.get(match.product_id);
-
-//                 if (!product) {
-//                     return null;
-//                 }
-
-//                 const match_percentage = Math.max(
-//                     0,
-//                     Math.min(
-//                         100,
-//                         (1 - match._distance) * 100
-//                     )
-//                 );
-
-//                 return {
-//                     ...product,
-//                     match_percentage: `${Math.round(match_percentage)}%`
-//                 };
-//             })
-//             .filter(Boolean);
-
-//         if (price !== undefined) {
-//             products = products.filter(
-//                 product => product.price <= Number(price)
-//             );
-//         }
-
-//         if (quantity !== undefined) {
-//             products = products.filter(
-//                 product => product.stock >= Number(quantity)
-//             );
-//         }
-
-//         const next_cursor =
-//             results.length === 10
-//                 ? String(offset + 10)
-//                 : null;
-
-//         return {
-//             products,
-//             next_cursor
-//         };
-
-//     } catch (err) {
-
-//         console.error(
-//             "SIMILARITY SEARCH ERROR:",
-//             err
-//         );
-
-//         throw err;
-//     }
-// }
-
-
-
+        throw error;
+    }
+}
 
 
 
@@ -300,5 +319,6 @@ export {
     add_product_embedding,
     edit_product_embedding,
     delete_product_embedding,
-    similarity_search_products
+    similarity_search_products,
+    get_similar_products_using_prestored_vector
 };

@@ -64,7 +64,8 @@ const order_schema = mongoose.Schema({
         enum: [
             "created",
             "attempted",
-            "paid"
+            "paid",
+            "failed"
         ]
     },
 
@@ -78,7 +79,7 @@ const order_schema = mongoose.Schema({
             "PENDING_PAYMENT",
             "CONFIRMED",
             "CANCELLED",
-            "COMPLETED"
+            "FAILED"
         ],
         default: "PENDING_PAYMENT"
     }

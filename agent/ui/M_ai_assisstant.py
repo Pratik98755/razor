@@ -2,6 +2,7 @@ import streamlit as st
 
 from ai.agent import ask_agent
 
+
 def ai_assisstant_page(user):
     st.title("AI Assisstant")
     st.subheader("One AI assistant for all your needs!")
@@ -11,8 +12,9 @@ def ai_assisstant_page(user):
 
     # ---------------- Example prompts ----------------
     if not st.session_state.chat_history:
-        
-        st.markdown("""
+
+        st.markdown(
+            """
             <style>
             div.stButton > button {
                 color: #888888;
@@ -25,33 +27,28 @@ def ai_assisstant_page(user):
                 border-color: #666666;
             }
             </style>
-        """, unsafe_allow_html=True)
-        
+        """,
+            unsafe_allow_html=True,
+        )
+
         st.markdown(
-            "<h3 style='text-align: center;'>Try asking...</h3>",
-            unsafe_allow_html=True
+            "<h3 style='text-align: center;'>Try asking...</h3>", unsafe_allow_html=True
         )
 
         col1, col2 = st.columns(2)
 
         with col1:
             example_1 = st.button(
-                "➕ Add a product named Nike Blue Running Shoe",
-                width="stretch"
+                "➕ Add a product named Nike Blue Running Shoe", width="stretch"
             )
             example_2 = st.button(
-                "📊 What's my sales in the last month?",
-                width="stretch"
+                "📊 What's my sales in the last month?", width="stretch"
             )
 
         with col2:
-            example_3 = st.button(
-                "💰 What's my total sales?",
-                width="stretch"
-            )
+            example_3 = st.button("💰 What's my total sales?", width="stretch")
             example_4 = st.button(
-                "📦 Which products are running low on stock?",
-                width="stretch"
+                "📦 Which products are running low on stock?", width="stretch"
             )
 
         if example_1:
@@ -83,21 +80,16 @@ def ai_assisstant_page(user):
         with st.chat_message("user"):
             st.write(question)
 
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": question
-        })
+        st.session_state.chat_history.append({"role": "user", "content": question})
 
         with st.chat_message("assistant"):
-            answer, products = ask_agent(
-                question,
-                user["user_id"]
+            answer, products, payment, cart_checkout_details = ask_agent(
+                question, user["user_id"]
             )
 
-            st.session_state.chat_history.append({
-                "role": "assistant",
-                "content": answer
-            })
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": answer}
+            )
 
             st.write(answer)
 

@@ -107,7 +107,8 @@ const checkout_schema = new mongoose.Schema(
             enum: [
                 "PENDING_PAYMENT",
                 "CONFIRMED",
-                "CANCELLED"
+                "CANCELLED",
+                "FAILED"
             ],
             default: "PENDING_PAYMENT"
         }

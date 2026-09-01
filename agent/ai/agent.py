@@ -69,6 +69,8 @@ def get_agent():
             When recommending products, use actual catalog data returned by
             the tools.
             
+            # If you haven't created an order using tools, then you can't cancel a order that's not created.
+            
             Never expose Key ID to the user. Payment process is automatic, you do not need to pass any data to user
             for him to pay. Just tell him order_id and continue with payment.  
 

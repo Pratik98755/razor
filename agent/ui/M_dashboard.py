@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from api import get_products, sales_by_merchant
+from api import get_products, sales_by_merchant, get_recommendation_stats
 
 
 def dashboard_page(user):
@@ -193,6 +193,222 @@ def dashboard_page(user):
 
         else:
             st.info("No products found.")
+
+    # # =========================================================
+    # # AI RECOMMENDATION ANALYTICS
+    # # =========================================================
+
+    # recommendation_stats = get_recommendation_stats(user["user_id"])
+
+    # st.divider()
+    # st.subheader("🤖 AI Recommendation Performance")
+
+    # if recommendation_stats:
+
+    #     shown = int(recommendation_stats.get("shown", 0))
+    #     added = int(recommendation_stats.get("added_to_cart", 0))
+    #     purchased = int(recommendation_stats.get("purchased", 0))
+    #     dismissed = int(recommendation_stats.get("dismissed", 0))
+    #     purchased_units = int(recommendation_stats.get("purchased_units", 0))
+
+    #     cross_sell_revenue = float(recommendation_stats.get("cross_sell_revenue", 0))
+
+    #     add_rate = float(recommendation_stats.get("add_to_cart_rate", 0))
+
+    #     purchase_rate = float(recommendation_stats.get("purchase_rate", 0))
+
+    #     conversion_rate = float(
+    #         recommendation_stats.get("recommendation_conversion_rate", 0)
+    #     )
+
+    #     revenue_per_recommendation = float(
+    #         recommendation_stats.get("revenue_per_recommendation", 0)
+    #     )
+
+    #     # ---------------------------------------------------------
+    #     # MAIN RECOMMENDATION METRICS
+    #     # ---------------------------------------------------------
+
+    #     col1, col2, col3, col4 = st.columns(4)
+
+    #     with col1:
+    #         st.metric("Recommendations Shown", shown)
+
+    #     with col2:
+    #         st.metric("Added to Cart", added, delta=f"{add_rate:.1%}")
+
+    #     with col3:
+    #         st.metric("Purchased", purchased, delta=f"{purchase_rate:.1%}")
+
+    #     with col4:
+    #         st.metric("Dismissed", dismissed)
+
+    #     # ---------------------------------------------------------
+    #     # REVENUE + CONVERSION
+    #     # ---------------------------------------------------------
+
+    #     col1, col2, col3, col4 = st.columns(4)
+
+    #     with col1:
+    #         st.metric("Cross-Sell Revenue", f"₹{cross_sell_revenue:,.0f}")
+
+    #     with col2:
+    #         st.metric("Purchase Conversion", f"{conversion_rate:.1%}")
+
+    #     with col3:
+    #         st.metric("Recommended Units Sold", purchased_units)
+
+    #     with col4:
+    #         st.metric("Revenue / Recommendation", f"₹{revenue_per_recommendation:,.2f}")
+
+    # else:
+
+    #     st.info("No recommendation analytics available yet.")
+
+    # =========================================================
+    # AI GROWTH / RECOMMENDATION ANALYTICS
+    # =========================================================
+
+    recommendation_stats = get_recommendation_stats(user["user_id"])
+
+    st.divider()
+
+    if recommendation_stats:
+
+        shown = int(recommendation_stats.get("shown", 0))
+        added = int(recommendation_stats.get("added_to_cart", 0))
+        purchased = int(recommendation_stats.get("purchased", 0))
+        dismissed = int(recommendation_stats.get("dismissed", 0))
+
+        purchased_units = int(recommendation_stats.get("purchased_units", 0))
+
+        cross_sell_revenue = float(recommendation_stats.get("cross_sell_revenue", 0))
+
+        add_rate = float(recommendation_stats.get("add_to_cart_rate", 0))
+
+        purchase_rate = float(recommendation_stats.get("purchase_rate", 0))
+
+        conversion_rate = float(
+            recommendation_stats.get("recommendation_conversion_rate", 0)
+        )
+
+        revenue_per_recommendation = float(
+            recommendation_stats.get("revenue_per_recommendation", 0)
+        )
+
+        st.subheader("🤖 AI Growth")
+
+        # =====================================================
+        # AI-GENERATED REVENUE — HERO METRIC
+        # =====================================================
+
+        st.markdown("### 💰 AI-Generated Revenue")
+
+        revenue_col1, revenue_col2 = st.columns([2, 1])
+
+        with revenue_col1:
+            with st.container(border=True):
+                st.metric(
+                    "Revenue generated through AI recommendations",
+                    f"₹{cross_sell_revenue:,.0f}",
+                )
+
+        with revenue_col2:
+            with st.container(border=True):
+                st.metric("Additional Purchases", purchased)
+
+        # =====================================================
+        # RECOMMENDATION FUNNEL
+        # =====================================================
+
+        st.markdown("### 📊 Recommendation Funnel")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Recommendations Shown", shown)
+
+        with col2:
+            st.metric("Added to Cart", added, delta=f"{add_rate:.1%}")
+
+        with col3:
+            st.metric("Purchased", purchased, delta=f"{conversion_rate:.1%}")
+
+        with col4:
+            st.metric("Dismissed", dismissed)
+
+        # =====================================================
+        # SECONDARY METRICS
+        # =====================================================
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("Add-to-Cart Rate", f"{add_rate:.1%}")
+
+        with col2:
+            st.metric("Recommendation Conversion", f"{conversion_rate:.1%}")
+
+        with col3:
+            st.metric("Revenue / Recommendation", f"₹{revenue_per_recommendation:,.2f}")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric("Recommended Units Sold", purchased_units)
+
+        with col2:
+            st.metric("Purchase After Add-to-Cart", f"{purchase_rate:.1%}")
+
+    else:
+
+        st.info(
+            "No AI recommendation activity yet. "
+            "Your AI cross-sell analytics will appear here."
+        )
+
+    # =====================================================
+    # TOP AI CROSS-SELLS
+    # =====================================================
+
+    st.markdown("### 🛍️ Top AI Cross-Sells")
+
+    top_ai_cross_sells = recommendation_stats.get("top_ai_cross_sells", [])
+
+    if top_ai_cross_sells:
+
+        cross_sell_rows = []
+
+        for item in top_ai_cross_sells:
+
+            product = product_map.get(item.get("product_id"))
+
+            product_name = (
+                product["name"] if product else item.get("product_id", "Unknown")
+            )
+
+            cross_sell_rows.append(
+                {
+                    "Product": product_name,
+                    "Shown": item.get("shown", 0),
+                    "Added": item.get("added_to_cart", 0),
+                    "Add Rate": (f"{float(item.get('add_to_cart_rate', 0)):.1%}"),
+                    "Purchased": item.get("purchased", 0),
+                    "Purchase Rate": (f"{float(item.get('purchase_rate', 0)):.1%}"),
+                    "Skipped": item.get("skipped", 0),
+                    "Skip Rate": (f"{float(item.get('skip_rate', 0)):.1%}"),
+                    "Units Sold": item.get("purchased_units", 0),
+                    "Revenue": (f"₹{float(item.get('revenue', 0)):,.0f}"),
+                }
+            )
+
+        cross_sell_df = pd.DataFrame(cross_sell_rows)
+
+        st.dataframe(cross_sell_df, width="stretch", hide_index=True)
+
+    else:
+
+        st.info("No AI cross-sell recommendations yet.")
 
     # =========================================================
     # LOW STOCK

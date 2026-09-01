@@ -1,9 +1,8 @@
-
 import streamlit as st
 import streamlit.components.v1 as components
 
-@st.dialog("Complete Cart Payment", width="large")
 
+@st.dialog("Complete Cart Payment", width="large")
 def cart_checkout_payment_dialog(payment, user_id):
 
     checkout_html = f"""
@@ -40,6 +39,8 @@ def cart_checkout_payment_dialog(payment, user_id):
                         const options = {{
 
                             "key": "{payment["key_id"]}",
+
+                            "retry": false,
 
                             "amount": {payment["amount"]},
 
@@ -194,13 +195,81 @@ def cart_checkout_payment_dialog(payment, user_id):
 
                                 "color": "#3399cc"
 
+                            }},
+
+
+                            "modal": {{
+
+                                "ondismiss": async function() {{
+
+
+                                    console.log(
+                                        "Razorpay checkout payment failure !!"
+                                    );
+
+                                    try {{
+
+                                        const response = await fetch(
+
+                                            "http://localhost:8009/carts/checkout_payment_failure",
+
+                                            {{
+
+                                                method: "POST",
+
+                                                headers: {{
+
+                                                    "Content-Type":
+                                                        "application/json",
+
+                                                    "X-User-ID":
+                                                        "{user_id}",
+
+                                                    "X-Actor-Type":
+                                                        "USER"
+
+                                                }},
+
+                                                body: JSON.stringify({{
+
+                                                    razorpay_order_id:
+                                                        "{payment["razorpay_order_id"]}"
+
+                                                }})
+
+                                            }}
+
+                                        );
+
+
+                                        const result =
+                                            await response.json();
+
+
+                                        console.log(
+                                            "Cancel checkout response:",
+                                            result
+                                        );
+
+                                    }}
+
+                                    catch (error) {{
+
+                                        console.error(
+                                            "Cancel checkout error:",
+                                            error
+                                        );
+
+                                    }}
+
+                                }}
+
                             }}
 
                         }};
 
 
-                        const rzp =
-                            new Razorpay(options);
+                        const rzp = new Razorpay(options);
 
 
                         rzp.on(
@@ -210,12 +279,13 @@ def cart_checkout_payment_dialog(payment, user_id):
                             function(resp) {{
 
                                 statusDiv.innerHTML =
-
                                     '<h4 style="color:red;">' +
-
-                                    '❌ Payment Failed' +
-
-                                    '</h4>';
+                                        '❌ Payment Failed' +
+                                    '</h4>' +
+                                    '<p style="color:white;">' +
+                                        'Your cart is untouched.<br>' +
+                                        'You can try again after sometime!' +
+                                    '</p>';
 
                                 console.error(
                                     "Payment failed:",
