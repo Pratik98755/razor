@@ -56,7 +56,7 @@ The backend uses MongoDB through Mongoose. Configure the MongoDB connection stri
 <h2>🔐 Environment Variables</h2>
 
 <p>
-Create a local <code>.env</code> file containing the credentials required by the backend and AI integrations. The exact variable names should match the names read by the source code.
+Create a local <code>.env</code> file containing the credentials required by the backend and AI integrations. The exact variable names should match the names read by the source code. We have <code>.env.example</code> for your help in the agent and server directory.
 </p>
 
 <pre>
@@ -68,10 +68,6 @@ RAZORPAY_KEY_SECRET=...
 GOOGLE_API_KEY=...
 GROQ_API_KEY=...
 </pre>
-
-<p>
-Do <b>not</b> commit <code>.env</code> or API credentials to the repository.
-</p>
 
 <h2>🖥️ Start Streamlit</h2>
 
