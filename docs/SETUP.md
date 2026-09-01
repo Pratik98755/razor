@@ -44,7 +44,7 @@ Start the Express server using the project's configured development command.
 </p>
 
 <pre>
-npm run dev
+npm run start
 </pre>
 Or if you have nodemon run (while being in server/)
 <pre>
