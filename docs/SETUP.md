@@ -46,6 +46,10 @@ Start the Express server using the project's configured development command.
 <pre>
 npm run dev
 </pre>
+Or if you have nodemon run (while being in server/)
+<pre>
+nodemon server.js
+</pre>
 
 <h2>🍃 MongoDB</h2>
 
