@@ -263,6 +263,6 @@ The current architecture combines agentic interaction, semantic product discover
 <p align="center"><b>AI + Commerce + Recommendations + Payments + Agentic Workflows</b></p>
 
 
-<h2>📄 License</h2>
 
-<p> Copyright © 2026 Pratik. All rights reserved. </p>
+
+<p align="center"> Copyright © 2026 Pratik. All rights reserved. </p>
