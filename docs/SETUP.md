@@ -55,6 +55,9 @@ nodemon server.js
 
 <p>
 The backend uses MongoDB through Mongoose. Configure the MongoDB connection string through an environment variable rather than hard-coding credentials in source code.
+<pre>
+   Configure your MongoDB url in the server/server.js file alongside port.
+</pre>
 </p>
 
 <h2>🔐 Environment Variables</h2>
@@ -64,8 +67,6 @@ Create a local <code>.env</code> file containing the credentials required by the
 </p>
 
 <pre>
-MONGO_URI=...
-
 RAZORPAY_KEY_ID=...
 RAZORPAY_KEY_SECRET=...
 
