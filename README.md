@@ -1,4 +1,5 @@
-<h1 align="center">🤖 AI-Powered Agentic Commerce</h1>
+<h1 align="center">🤖 RazorScout</h1>
+<h2 align="center">AI-Powered Agentic Commerce</h2>
 
 <p align="center">
   <b>An AI-native commerce platform where intelligent agents can discover products, manage carts, drive cross-sell recommendations, and complete real payments through Razorpay.</b>
